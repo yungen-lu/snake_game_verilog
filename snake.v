@@ -11,10 +11,11 @@
  * @input	reset	the reset signal
  * @output	divided_clk	the divided clk(25MHz)
  */
-module clk_divider_25MHz(
-input clk,
-input reset,
-output reg divided_clk
+module clk_divider_25MHz
+(
+	input clk,
+	input reset,
+	output reg divided_clk
 );
 
 always@(posedge clk or negedge reset) begin
@@ -34,10 +35,11 @@ endmodule
  * @input	reset	the reset signal
  * @output	divided_clk	the divided clk(4Hz)
  */
-module clk_divider_4Hz(
-input clk,
-input reset,
-output reg divided_clk
+module clk_divider_4Hz
+(
+	input clk,
+	input reset,
+	output reg divided_clk
 );
 
 reg [31:0] counter=31'd0;
@@ -66,10 +68,11 @@ endmodule
  * @input	reset	the reset signal
  * @output	divided_clk	the divided clk(100Hz)
  */
-module clk_divider_100Hz(
-input clk,
-input reset,
-output reg divided_clk
+module clk_divider_100Hz
+(
+	input clk,
+	input reset,
+	output reg divided_clk
 );
 
 reg [31:0] counter=31'd0;
@@ -97,12 +100,15 @@ endmodule
  * @input	h_count_value	the horizontal pixel clock counter value
  * @output	h_sync	hsync signal for vga
  */
-module h_sync_signal(
-input [15:0] h_count_value,
-output h_sync
+module h_sync_signal #
+(
+	parameter h_sync_pulse = 96
+)
+(
+	input [15:0] h_count_value,
+	output h_sync
 );
 
-parameter h_sync_pulse = 96;
 
 assign h_sync = (h_count_value < h_sync_pulse);
 endmodule
@@ -115,11 +121,12 @@ endmodule
  * @output	h_count_value
  * @output	enable_v_counter	enable vertical counter only when horizontal counter is done counting
  */
-module horizontal_counter(
-input clk_25MHz,
-input reset,
-output reg [15:0] h_count_value = 16'd0,
-output enable_v_counter
+module horizontal_counter
+(
+	input clk_25MHz,
+	input reset,
+	output reg [15:0] h_count_value = 16'd0,
+	output enable_v_counter
 );
 
 assign enable_v_counter = (h_count_value == 16'd799);
@@ -142,12 +149,15 @@ endmodule
  * @input	v_count_value	the vertical pixel clock counter value
  * @output	v_sync	vsync signal for vga
  */
-module v_sync_signal(
-input [16:0] v_count_value,
-output v_sync
+module v_sync_signal #
+(
+	parameter v_sync_pulse = 2
+)
+(
+	input [16:0] v_count_value,
+	output v_sync
 );
 
-parameter v_sync_pulse = 2;
 	
 assign v_sync = (v_count_value<v_sync_pulse);
 endmodule
@@ -160,11 +170,12 @@ endmodule
  * @input	enable_v_counter	count only when horizontal counter is done counting
  * @output	h_count_value
  */
-module vertical_counter(
-input clk_25MHz,
-input reset,
-input enable_v_counter,
-output reg [15:0] v_count_value = 16'd0
+module vertical_counter
+(
+	input clk_25MHz,
+	input reset,
+	input enable_v_counter,
+	output reg [15:0] v_count_value = 16'd0
 );
 
 always@(posedge clk_25MHz or negedge reset) begin
@@ -191,25 +202,27 @@ endmodule
  * @input	v_count_value
  * @ouput	on_display	`1'b1` when the rgb values can be output
  */
-module check_on_display(
-input [15:0] h_count_value,
-input [15:0] v_count_value,
-output on_display
+module check_on_display #
+(
+	parameter h_pixel = 640,
+	parameter h_front_porch = 16,
+	parameter h_sync_pulse = 96,
+	parameter h_back_porch = 48,
+	parameter h_wait_time = h_sync_pulse + h_back_porch,
+	parameter h_display_over_time = h_wait_time + h_pixel - 1,
+	parameter v_pixel = 480,
+	parameter v_front_porch = 10,
+	parameter v_sync_pulse = 2,
+	parameter v_back_porch = 33,
+	parameter v_wait_time = v_sync_pulse + v_back_porch,
+	parameter v_display_over_time = v_wait_time + v_pixel - 1
+)
+(
+	input [15:0] h_count_value,
+	input [15:0] v_count_value,
+	output on_display
 );
-parameter h_pixel = 640,
-			 h_front_porch = 16,
-			 h_sync_pulse = 96,
-			 h_back_porch = 48;
 
-parameter h_wait_time = h_sync_pulse + h_back_porch,
-			 h_display_over_time = h_wait_time + h_pixel - 1;
-			 
-parameter v_pixel = 480,
-			 v_front_porch = 10,
-			 v_sync_pulse = 2,
-			 v_back_porch = 33;
-parameter v_wait_time = v_sync_pulse + v_back_porch,
-			 v_display_over_time = v_wait_time + v_pixel - 1;
 assign on_display = (h_count_value >= h_wait_time && h_count_value <= h_display_over_time && v_count_value >= v_wait_time && v_count_value <= v_display_over_time);
 endmodule
 
@@ -224,14 +237,15 @@ endmodule
  * @output	green_output
  * @output	blue_output
  */
-module output_rgb_signal(
-input on_display,
-input [3:0] red_input,
-input [3:0] green_input,
-input [3:0] blue_input,
-output [3:0] red_output,
-output [3:0] green_output,
-output [3:0] blue_output
+module output_rgb_signal
+(
+	input on_display,
+	input [3:0] red_input,
+	input [3:0] green_input,
+	input [3:0] blue_input,
+	output [3:0] red_output,
+	output [3:0] green_output,
+	output [3:0] blue_output
 );
 
 assign red_output = (on_display) ? red_input:4'h0;
@@ -270,15 +284,19 @@ module KeypadController(clk_100Hz, reset, keypadCol, keypadRow, direction);
         begin
             case({keypadRow, keypadCol})
                 8'b1011_1101:begin
+						if (direction != DOWN)
                     direction <= UP;
                 end// press 6
                 8'b1110_1101:begin
+					 if (direction != UP)
                     direction <= DOWN;
                 end// press 4
                 8'b1101_1110:begin
+					 if (direction != LEFT)
                     direction <= RIGHT;
                 end// press 8
                 8'b1101_1011:begin
+					 if (direction != RIGHT)
                     direction <= LEFT;
                 end// press 2
                 default:begin
@@ -320,30 +338,31 @@ endmodule
  * @input	apple_y_position
  * @output	red_reg
  */
-module render_apple(
-input clk_25MHz,
-input reset,
-input [15:0] h_count_value,
-input [15:0] v_count_value,
-input [6:0] apple_x_position,
-input [6:0] apple_y_position,
-output reg [3:0] red_reg
+module render_apple #
+(
+	parameter h_pixel = 640,
+	parameter h_front_porch = 16,
+	parameter h_sync_pulse = 96,
+	parameter h_back_porch = 48,
+	parameter h_wait_time = h_sync_pulse + h_back_porch,
+	parameter h_display_over_time = h_wait_time + h_pixel - 1,
+	parameter v_pixel = 480,
+	parameter v_front_porch = 10,
+	parameter v_sync_pulse = 2,
+	parameter v_back_porch = 33,
+	parameter v_wait_time = v_sync_pulse + v_back_porch,
+	parameter v_display_over_time = v_wait_time + v_pixel - 1
+)
+(
+	input clk_25MHz,
+	input reset,
+	input [15:0] h_count_value,
+	input [15:0] v_count_value,
+	input [6:0] apple_x_position,
+	input [6:0] apple_y_position,
+	output reg [3:0] red_reg
 );
 
-parameter h_pixel = 640,
-			 h_front_porch = 16,
-			 h_sync_pulse = 96,
-			 h_back_porch = 48;
-
-parameter h_wait_time = h_sync_pulse + h_back_porch,
-			 h_display_over_time = h_wait_time + h_pixel - 1;
-			 
-parameter v_pixel = 480,
-			 v_front_porch = 10,
-			 v_sync_pulse = 2,
-			 v_back_porch = 33;
-parameter v_wait_time = v_sync_pulse + v_back_porch,
-			 v_display_over_time = v_wait_time + v_pixel - 1;
 
 always@(posedge clk_25MHz or negedge reset) begin
 	if(!reset) begin
@@ -369,30 +388,31 @@ endmodule
  * @input	v_count_value
  * @output	blue_reg
  */
-module render_border(
-input clk_25MHz,
-input reset,
-input [15:0] h_count_value,
-input [15:0] v_count_value,
-output reg [3:0] blue_reg
+module render_border #
+(
+	parameter h_pixel = 640,
+	parameter h_front_porch = 16,
+	parameter h_sync_pulse = 96,
+	parameter h_back_porch = 48,
+	parameter h_wait_time = h_sync_pulse + h_back_porch,
+	parameter h_display_over_time = h_wait_time + h_pixel - 1,
+	parameter v_pixel = 480,
+	parameter v_front_porch = 10,
+	parameter v_sync_pulse = 2,
+	parameter v_back_porch = 33,
+	parameter v_wait_time = v_sync_pulse + v_back_porch,
+	parameter v_display_over_time = v_wait_time + v_pixel - 1,
+	parameter border_width = 10
+)
+(
+	input clk_25MHz,
+	input reset,
+	input [15:0] h_count_value,
+	input [15:0] v_count_value,
+	output reg [3:0] blue_reg
 );
 
-parameter h_pixel = 640,
-			 h_front_porch = 16,
-			 h_sync_pulse = 96,
-			 h_back_porch = 48;
 
-parameter h_wait_time = h_sync_pulse + h_back_porch,
-			 h_display_over_time = h_wait_time + h_pixel - 1;
-			 
-parameter v_pixel = 480,
-			 v_front_porch = 10,
-			 v_sync_pulse = 2,
-			 v_back_porch = 33;
-parameter v_wait_time = v_sync_pulse + v_back_porch,
-			 v_display_over_time = v_wait_time + v_pixel - 1;
-			 
-parameter border_width = 10;
 wire left_border;
 wire right_border;
 wire top_border;
@@ -425,12 +445,13 @@ endmodule
  * @output apple_x_position
  * @output apple_y_position
  */
-module gen_rand_apple_position(
-input clk,
-input gen_new_position_signal,
-input reset,
-output reg [6:0] apple_x_position=7'd20,
-output reg [6:0] apple_y_position=7'd20
+module gen_rand_apple_position
+(
+	input clk,
+	input gen_new_position_signal,
+	input reset,
+	output reg [6:0] apple_x_position=7'd20,
+	output reg [6:0] apple_y_position=7'd20
 );
 
 
@@ -438,12 +459,12 @@ wire [5:0] output_x;
 wire [5:0] output_y;
 simple_lfsr_6bit my_simple_lfsr_6bit_x(clk,reset,output_x);
 simple_lfsr_6bit my_simple_lfsr_6bit_y(clk,reset,output_y);
-always@(gen_new_position_signal or reset) begin
+always@(*) begin
 	if(!reset) begin
 		apple_x_position <= 7'd20;
 		apple_y_position <= 7'd20;
 	end
-	else if(gen_new_position_signal)begin
+	else if(gen_new_position_signal == 1'd1)begin
 		apple_x_position <= output_x % 60 + 7'd2;
 		apple_y_position <= output_y % 44 + 7'd2;
 	end
@@ -458,11 +479,11 @@ endmodule
  * @input	reset
  * @output	data
  */
-module simple_lfsr_6bit(
-  input clk,
-  input reset,
-
-  output reg [5:0] data
+module simple_lfsr_6bit
+(
+	input clk,
+	input reset,
+	output reg [5:0] data
 );
 
 reg [5:0] data_next=6'h1f;
@@ -490,9 +511,10 @@ endmodule
  * @input	value	the value that will be output to the display
  * @output	display_value the value that the seven segment display will get
  */
-module seven_segment_display(
-input [3:0]value,
-output reg [6:0]display_value
+module seven_segment_display
+(
+	input [3:0]value,
+	output reg [6:0]display_value
 );
 
 always@(value) begin
@@ -532,18 +554,33 @@ endmodule
  * @output	ten_seven_segment_display
  * @output	one_seven_segment_display
  */
-module snake(
-input clk,
-input reset,
-input [3:0] keypadCol,
-output [3:0] keypadRow,
-output H_sync,
-output V_sync,
-output [3:0] red,
-output [3:0] green,
-output [3:0] blue,
-output [6:0] ten_seven_segment_display,
-output [6:0] one_seven_segment_display
+module snake #
+(
+	parameter h_pixel = 640,
+	parameter h_front_porch = 16,
+	parameter h_sync_pulse = 96,
+	parameter h_back_porch = 48,
+	parameter h_wait_time = h_sync_pulse + h_back_porch,
+	parameter h_display_over_time = h_wait_time + h_pixel - 1,
+	parameter v_pixel = 480,
+	parameter v_front_porch = 10,
+	parameter v_sync_pulse = 2,
+	parameter v_back_porch = 33,
+	parameter v_wait_time = v_sync_pulse + v_back_porch,
+	parameter v_display_over_time = v_wait_time + v_pixel - 1
+)
+(
+	input clk,
+	input reset,
+	input [3:0] keypadCol,
+	output [3:0] keypadRow,
+	output H_sync,
+	output V_sync,
+	output [3:0] red,
+	output [3:0] green,
+	output [3:0] blue,
+	output [6:0] ten_seven_segment_display,
+	output [6:0] one_seven_segment_display
 );
 
 
@@ -608,27 +645,9 @@ render_border my_render_border(clk_25MHz,reset,h_count_value,v_count_value,blue_
  */
 wire [3:0] ten_wire;
 wire [3:0] one_wire;
+
 seven_segment_display my_ten_seven_segment_display(ten_wire,ten_seven_segment_display); 
 seven_segment_display my_one_seven_segment_display(one_wire,one_seven_segment_display);
-
-
-/**
- * the parameter for vga display
- */
-parameter h_pixel = 640,
-			 h_front_porch = 16,
-			 h_sync_pulse = 96,
-			 h_back_porch = 48;
-
-parameter h_wait_time = h_sync_pulse + h_back_porch,
-			 h_display_over_time = h_wait_time + h_pixel - 1;
-			 
-parameter v_pixel = 480,
-			 v_front_porch = 10,
-			 v_sync_pulse = 2,
-			 v_back_porch = 33;
-parameter v_wait_time = v_sync_pulse + v_back_porch,
-			 v_display_over_time = v_wait_time + v_pixel - 1;
 
 			 
 			 
@@ -667,6 +686,18 @@ always@(posedge clk_25MHz or negedge reset) begin
 	end
 end
 
+/**
+ * treat `tmp_array` as a array of bit and use it to store info of whether the index position of snake has collide with it's head
+ */
+genvar i;
+wire [126:0] tmp_array;
+generate
+	for(i=0;i <127;i=i+1) begin : generate_tmp_array
+		assign tmp_array[i] = ((array_of_snake_x_position[0] == array_of_snake_x_position[i+1]) && (array_of_snake_y_position[0] == array_of_snake_y_position[i+1]));
+	end
+endgenerate
+wire collision_with_body;
+assign collision_with_body = (tmp_array) ? 1'b1: 1'b0;
 
 
 /**
@@ -674,7 +705,8 @@ end
  * this code also checks whether the snake head had collide with the border or apple and increase `score` when the it collide with the apple
  */ 
 integer len_counter_p;
-reg gen_new_position_signal;
+reg gen_new_position_signal=1'd0; //TODO
+parameter UP = 2'd0, DOWN = 2'd1, RIGHT = 2'd2, LEFT = 2'd3;
 reg [6:0] score=7'd0;
 assign collision_with_border = ((array_of_snake_x_position[0] == 7'd0) || (array_of_snake_x_position[0] == 63) || (array_of_snake_y_position[0] == 7'd0) || (array_of_snake_y_position[0] == 47));
 assign collision_with_apple = ((array_of_snake_x_position[0] == apple_x_position) && (array_of_snake_y_position[0] == apple_y_position));
@@ -688,6 +720,7 @@ always@(posedge clk_4Hz or negedge reset) begin
 		array_of_snake_y_position[1]<=7'd24;
 		score <= 7'd0;
 		snake_len <= 7'd0;
+		// TODO collision_with_body <= 1'b0;
 	end
 	else begin
 		for(len_counter_p = 127;len_counter_p > 0;len_counter_p=len_counter_p - 1) begin
@@ -698,18 +731,22 @@ always@(posedge clk_4Hz or negedge reset) begin
 		end
 		
 		case(direction)
-			2'd0: begin
-				array_of_snake_y_position[0] <= array_of_snake_y_position[0] - 7'd1;
-			end
-			2'd1: begin
-				array_of_snake_y_position[0] <= array_of_snake_y_position[0] + 7'd1;
-			end
-			2'd2: begin
-				array_of_snake_x_position[0] <= array_of_snake_x_position[0] + 7'd1;
-			end
-			2'd3: begin
-				array_of_snake_x_position[0] <= array_of_snake_x_position[0] - 7'd1;
-			end
+			2'd0: 
+				begin
+						array_of_snake_y_position[0] <= array_of_snake_y_position[0] - 7'd1;
+				end
+			2'd1: 
+				begin
+						array_of_snake_y_position[0] <= array_of_snake_y_position[0] + 7'd1;
+				end
+			2'd2: 
+				begin
+						array_of_snake_x_position[0] <= array_of_snake_x_position[0] + 7'd1;
+				end
+			2'd3: 
+				begin
+						array_of_snake_x_position[0] <= array_of_snake_x_position[0] - 7'd1;
+				end
 		endcase
 		if(collision_with_apple) begin
 			snake_len <= snake_len + 7'd1;
@@ -719,13 +756,14 @@ always@(posedge clk_4Hz or negedge reset) begin
 		else begin
 			gen_new_position_signal <= 1'd0;
 		end
-		if(collision_with_border) begin
+		if(collision_with_border | collision_with_body) begin
 			snake_len <= 7'd0;
 			score <= 7'd0;
 			array_of_snake_x_position[0]<=7'd32;
 			array_of_snake_y_position[0]<=7'd24;
 			array_of_snake_x_position[1]<=7'd31;
 			array_of_snake_y_position[1]<=7'd24;
+      //TODO gen_new_position_signal
 		end
 	end
 end
