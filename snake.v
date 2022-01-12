@@ -329,7 +329,7 @@ endmodule
 
 
 /**
- * render a 10x10 pixel red dot according to the `apple_x_position` and `apple_y_position`
+ * render a 8x8 pixel red dot according to the `apple_x_position` and `apple_y_position`
  * @input	clk_25MHz
  * @input	reset
  * @input	h_count_value
@@ -459,12 +459,13 @@ wire [5:0] output_x;
 wire [5:0] output_y;
 simple_lfsr_6bit my_simple_lfsr_6bit_x(clk,reset,output_x);
 simple_lfsr_6bit my_simple_lfsr_6bit_y(clk,reset,output_y);
-always@(*) begin
+ 
+always@(posedge gen_new_position_signal or negedge reset) begin
 	if(!reset) begin
 		apple_x_position <= 7'd20;
 		apple_y_position <= 7'd20;
 	end
-	else if(gen_new_position_signal == 1'd1)begin
+	else if(gen_new_position_signal)begin
 		apple_x_position <= output_x % 60 + 7'd2;
 		apple_y_position <= output_y % 44 + 7'd2;
 	end
@@ -652,9 +653,9 @@ seven_segment_display my_one_seven_segment_display(one_wire,one_seven_segment_di
 			 
 			 
 /**
- * this code block renders the snake positions according to the array `array_of_snake_x_position`, `array_of_snake_y_position` and `snake_len`
+ * this code block renders the snake positions according to the array `array_of_snake_x_position`, `array_of_snake_y_position` and `snake_body_len`
  */
-reg [6:0] snake_len=7'd0;
+reg [6:0] snake_body_len=7'd0;
 reg [6:0] array_of_snake_x_position[127:0];
 reg [6:0] array_of_snake_y_position[127:0];
 reg [3:0] green_reg;
@@ -673,7 +674,7 @@ always@(posedge clk_25MHz or negedge reset) begin
 	else begin
 		found = 1'd0;
 		for(len_counter_s = 0;len_counter_s < 128;len_counter_s = len_counter_s + 1) begin
-			if(!found && len_counter_s <= snake_len) begin
+			if(!found && len_counter_s <= snake_body_len) begin
 				if((h_count_value > h_wait_time + array_of_snake_x_position[len_counter_s] * 10) && (h_count_value < h_wait_time + (array_of_snake_x_position[len_counter_s] + 1) * 10) && (v_count_value > v_wait_time + array_of_snake_y_position[len_counter_s] * 10) && (v_count_value < v_wait_time + (array_of_snake_y_position[len_counter_s] + 1) * 10)) begin
 					green_reg <= 4'hf;
 					found = 1'd1;
@@ -693,7 +694,7 @@ genvar i;
 wire [126:0] tmp_array;
 generate
 	for(i=0;i <127;i=i+1) begin : generate_tmp_array
-		assign tmp_array[i] = ((array_of_snake_x_position[0] == array_of_snake_x_position[i+1]) && (array_of_snake_y_position[0] == array_of_snake_y_position[i+1]));
+		assign tmp_array[i] = ((snake_body_len > 3) && (i < snake_body_len) && (array_of_snake_x_position[0] == array_of_snake_x_position[i+1]) && (array_of_snake_y_position[0] == array_of_snake_y_position[i+1]));
 	end
 endgenerate
 wire collision_with_body;
@@ -705,7 +706,7 @@ assign collision_with_body = (tmp_array) ? 1'b1: 1'b0;
  * this code also checks whether the snake head had collide with the border or apple and increase `score` when the it collide with the apple
  */ 
 integer len_counter_p;
-reg gen_new_position_signal=1'd0; //TODO
+reg gen_new_position_signal=1'd1;
 parameter UP = 2'd0, DOWN = 2'd1, RIGHT = 2'd2, LEFT = 2'd3;
 reg [6:0] score=7'd0;
 assign collision_with_border = ((array_of_snake_x_position[0] == 7'd0) || (array_of_snake_x_position[0] == 63) || (array_of_snake_y_position[0] == 7'd0) || (array_of_snake_y_position[0] == 47));
@@ -719,12 +720,12 @@ always@(posedge clk_4Hz or negedge reset) begin
 		array_of_snake_x_position[1]<=7'd31;
 		array_of_snake_y_position[1]<=7'd24;
 		score <= 7'd0;
-		snake_len <= 7'd0;
-		// TODO collision_with_body <= 1'b0;
+		snake_body_len <= 7'd0;
+		gen_new_position_signal <=1'd1;
 	end
 	else begin
 		for(len_counter_p = 127;len_counter_p > 0;len_counter_p=len_counter_p - 1) begin
-			if(len_counter_p <= snake_len + 1) begin
+			if(len_counter_p <= snake_body_len + 1) begin
 				array_of_snake_x_position[len_counter_p] <= array_of_snake_x_position[len_counter_p-1];
 				array_of_snake_y_position[len_counter_p] <= array_of_snake_y_position[len_counter_p-1];
 			end
@@ -749,7 +750,7 @@ always@(posedge clk_4Hz or negedge reset) begin
 				end
 		endcase
 		if(collision_with_apple) begin
-			snake_len <= snake_len + 7'd1;
+			snake_body_len <= snake_body_len + 7'd1;
 			gen_new_position_signal <= 1'd1;
 			score <= score + 7'd1;
 		end
@@ -757,13 +758,13 @@ always@(posedge clk_4Hz or negedge reset) begin
 			gen_new_position_signal <= 1'd0;
 		end
 		if(collision_with_border | collision_with_body) begin
-			snake_len <= 7'd0;
+			snake_body_len <= 7'd0;
 			score <= 7'd0;
 			array_of_snake_x_position[0]<=7'd32;
 			array_of_snake_y_position[0]<=7'd24;
 			array_of_snake_x_position[1]<=7'd31;
 			array_of_snake_y_position[1]<=7'd24;
-      //TODO gen_new_position_signal
+			gen_new_position_signal <= 1'b1;
 		end
 	end
 end
